@@ -1,0 +1,9 @@
+# [START gae_python37_cloudsql_config]
+runtime: python37
+
+env_variables:
+  CLOUD_SQL_USERNAME: root
+  CLOUD_SQL_PASSWORD: root
+  CLOUD_SQL_DATABASE_NAME: herewego
+  CLOUD_SQL_CONNECTION_NAME: herewegoadi:us-central1:herewego
+# [END gae_python37_cloudsql_config]

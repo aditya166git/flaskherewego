@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class ="content-section">
+	<form method="POST" action="">
+		<fieldset class ="form-group">
+  				User name:<br>
+  				<input type="text" name="firstname">
+  				<br>
+  				First name:<br>
+  				<input type="text" name="lastname">
+  				<br><br>
+  				Last name:<br>
+  				<input type="text" name="firstname">
+  				<br>
+  				Age:<br>
+  				<input type="text" name="firstname">
+  				<br>
+  				Email:<br>
+  				<input type="text" name="firstname">
+  				<br>
+  				Password:<br>
+  				<input type="text" name="firstname">
+  				<br>
+  				Phone:<br>
+  				<input type="text" name="firstname">
+  				<br>
+  	    </fieldset>
+  	    <input type="submit" value="Submit">
+	</form>
+</div>
+<div class ="border-top pt-3">
+		<small class="text-muted">
+			Already have and Account? <a class="ml-2" href ="{{ url_for('login') }}">Log In</a>
+		</small>
+	</div>
+
+
+
+  
+
+{% endblock content %}
