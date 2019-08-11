@@ -97,7 +97,7 @@ def add_venue(user_account,venue_name,venue_open,venue_close,zip_code,city,addre
 
 @app.route('/addvenue',methods=['GET','POST'])
 def addvenue():
-	form = VenueForm()	
+	form = VenueForm()	  
 	if form.validate_on_submit():
 		add_venue('aditya166',str(form.venue_name.data),form.venue_open.data,form.venue_close.data,str(form.zip_code.data),str(form.city.data),str(form.address.data))
 		flash(f'Venue has been successfully added', 'success')
