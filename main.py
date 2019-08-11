@@ -1,8 +1,20 @@
 from flask import Flask, render_template, url_for, flash, redirect
 from forms import RegistrationForm, LoginForm
+import pymysql
+import datetime
+
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] ='381892'
+
+class Database:
+	def __init__(self):		
+		host = "127.0.0.1"
+		user = "root"
+		password = "root"
+		db = "herewego"
+		self.con = pymysql.connect(host=host, user=user, password=password, db=db, cursorclass=pymysql.cursors.DictCursor)
+		self.cur = self.con.cursor()
 
 posts =[
 	{
