@@ -1,4 +1,8 @@
 {% extends "layout.html" %}
 {% block content %}
-	<h1>HOME PAGE</h1>
+     <div class="border-top pt-3">
+        <small class="text-muted">
+            To go to your account <a class="ml-2" href="{{ url_for('login') }}">Sign In</a>
+        </small>
+    </div>
 {% endblock content %}
