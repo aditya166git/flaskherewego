@@ -1,5 +1,5 @@
 from flask import Flask, render_template, url_for, flash, redirect
-from forms import RegistrationForm, LoginForm, VenueForm
+from forms import RegistrationForm, LoginForm, VenueForm,StartEventForm
 app = Flask(__name__)
 import os
 import pymysql
@@ -48,6 +48,8 @@ def db_con():
 		return cnx
 '''end with db connection'''
 
+#conn = db_con()
+
 #Helper function
 def get_user_role(username):
 	conn = db_con()
@@ -92,7 +94,7 @@ def add_venue(user_account,venue_name,venue_open,venue_close,zip_code,city,addre
 	            for p in all_venues:
 	                print(p)	            
 	    except pymysql.InternalError as e:
-	         print("Error {" + e.args[0] + "}")
+	         print("Error {" + str(e.args[0]) + "}")
 
 
 @app.route('/addvenue',methods=['GET','POST'])
@@ -103,6 +105,99 @@ def addvenue():
 		flash(f'Venue has been successfully added', 'success')
 		return redirect(url_for('about'))
 	return render_template('addvenue.html', title='Add Venue', form=form)
+
+
+
+#Helper function
+
+#Get venue id based on vemue name 
+def get_venue_id(venue_name):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+				SELECT venue_id 
+				FROM venues
+				WHERE venue_name = %s
+				''',(venue_name,))
+			result = cursor.fetchone()
+			if result is None:
+				return "Venue not found"
+			else:
+				return int(result[0])
+		except pymysql.InternalError as e:
+			print("Error {" + str(e.args[0]) + "}")
+
+
+
+#Checks if a particular venue is available with a given venue id, start time and Date of event
+def venue_available(venue_id,start_time,event_date):
+	conn = db_con()
+	with conn.cursor() as cursor:
+	    try:
+	        cursor.execute('''
+	                        SELECT venue_id
+	                        FROM events
+	                        WHERE venue_id = %s AND event_start = %s AND event_date = %s
+	        ''',(venue_id,start_time,event_date))
+	        
+	        result = cursor.fetchone()
+	        if result is None:
+	            return True
+	        else:
+	            return False
+	    except pymysql.InternalError as e:
+	            print("Error {" + str(e.args[0]) + "}")
+
+#Helper function
+#Function that adds an hour to an exisiting hour specificed
+def add_hour(start_time):
+	hour = start_time.split(':')[0]
+	minute = start_time.split(':')[1]
+	hour_int = int(hour)
+	minute_int = int(minute)
+	hour_int_end = (hour_int+1) if hour_int < 23 else 0 
+	end_time = time(hour_int_end,minute_int)
+	end_time_final = end_time.strftime("%H:%M")
+	return end_time_final
+
+
+
+#Start an event
+def start_event(name,city,event_type,start_time,capacity,venue_id,username,description,event_date):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+		    end_time = start_time + datetime.timedelta(hours=1)
+		    creation_date = datetime.datetime.now().strftime("%Y-%m-%d")
+		    if venue_available(venue_id,start_time,event_date):
+		        cursor.execute('''
+		            INSERT INTO events(event_name,event_city,event_type,event_start,event_end,event_capacity,venue_id,creation_date,username,event_description,event_date)
+		            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)                         
+		            ''',(name,city,event_type,start_time,end_time,capacity,venue_id,creation_date,username,description,event_date))
+		        conn.commit()
+		        cursor.execute('''SELECT * FROM events WHERE event_name = %s''', (name,))
+		        events = cursor.fetchall()
+		        for event in events:
+		            print(event)
+		    else:
+		        flash("Event created for this time is unavailable. Please pick a different time")
+		        return redirect(url_for('startevent'))
+		except pymysql.InternalError as e:
+		    print("Error {"+ str(e.args[0]) +"}")
+
+
+@app.route('/startevent',methods=['GET','POST'])
+def startevent():
+	form = StartEventForm()
+	venue_name = form.venue_name.data
+	venue_id = get_venue_id(venue_name)
+	if form.validate_on_submit():
+		start_event(form.event_name.data,form.event_city.data,form.event_type.data,form.event_start.data,form.event_capacity.data,venue_id,form.username.data,form.event_description.data,form.event_date.data)
+		flash(f'You have successfully created this event', 'success')
+		return redirect(url_for('about'))
+	print(form.errors)
+	return render_template('start_event.html', title='Start Event', form=form)
 
 
 @app.route('/')
@@ -132,11 +227,12 @@ def info():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-	form = RegistrationForm()
-	if form.validate_on_submit():
-		flash(f'Account created for {form.username.data}!', 'success')
-		return redirect(url_for('about'))
-	return render_template('register.html', title='Register', form=form)
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        flash(f'Account created for {form.username.data}!', 'success')
+        add_user(form.username.data,form.firstname.data,form.lastname.data,form.age.data,form.email.data,"user",form.user_phone.data,"CHANGEME")        
+        return redirect(url_for('about'))
+    return render_template('register.html', title='Register', form=form)
 
 
 

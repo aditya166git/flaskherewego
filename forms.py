@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField,DateTimeField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField,DateTimeField,IntegerField
 from wtforms.validators import DataRequired, Length, Email, EqualTo
 import datetime
 from pytz import timezone
@@ -39,5 +39,16 @@ class VenueForm(FlaskForm):
 		default= datetime.datetime.now(tz))
 	submit = SubmitField('Add Venue')
 
-
-
+class StartEventForm(FlaskForm):
+	event_name = StringField('Event Name', validators=[DataRequired(), Length(min=2, max=50)])
+	event_type = StringField('Event Type', validators=[DataRequired(), Length(min=2, max=50)])
+	event_description = StringField('City where event will be held', validators=[DataRequired(),Length(min=2, max=80)])
+	venue_name = StringField('Venue Name', validators=[DataRequired(), Length(min=2, max=50)])
+	event_city = StringField('Description of event (Very brief description of event)', validators=[DataRequired(),Length(min=2, max=100)])
+	event_date = DateTimeField('Event Date',format = "%m/%d/%Y",validators=[DataRequired()],
+		default= datetime.datetime.now(tz))
+	event_start = DateTimeField('Event Start',format = "%H:%M",validators=[DataRequired()],
+		default= datetime.datetime.now(tz))
+	event_capacity = IntegerField('Specify Event Capacity')
+	username = StringField('Username', validators=[DataRequired(), Length(min=2, max=50)])
+	submit = SubmitField('Start Event')
