@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField,DateTimeField,IntegerField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField,DateTimeField,IntegerField,TimeField
 from wtforms.validators import DataRequired, Length, Email, EqualTo
 import datetime
 from pytz import timezone
@@ -52,3 +52,18 @@ class StartEventForm(FlaskForm):
 	event_capacity = IntegerField('Specify Event Capacity')
 	username = StringField('Username', validators=[DataRequired(), Length(min=2, max=50)])
 	submit = SubmitField('Start Event')
+
+class DeleteEventForm(FlaskForm):
+	event_name = StringField('Event Name', validators=[DataRequired(), Length(min=2, max=50)])
+	event_start = DateTimeField('Event Start',format = "%H:%M",validators=[DataRequired()],
+		default= datetime.datetime.now(tz))
+	submit = SubmitField('Delete Event')
+
+
+class DeleteVenueForm(FlaskForm):
+	venue_name = StringField('Venue Name', validators=[DataRequired(), Length(min=2, max=50)])
+	submit = SubmitField('Delete Venue')
+
+class DeleteUserForm(FlaskForm):
+	username = StringField('User Name', validators=[DataRequired(), Length(min=2, max=50)])
+	submit = SubmitField('Delete User')
