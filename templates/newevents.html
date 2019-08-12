@@ -1,0 +1,138 @@
+{% extends "user_layout.html" %}
+{% block content %}
+<html>
+<body>
+	<h1>Events Near you</h1>,<!--
+<table align="center" border="1" cellpadding="5" cellspacing="5">
+	<thead>
+        <tr>
+            
+            <th class="align-middle">Event ID</th>
+            <th class="align-middle">Event Name</th>
+            <th class="align-middle">Venue Name</th>
+            <th class="align-middle">Zip Code</th>
+            <th class="align-middle">City</th>
+            <th class="align-middle">Event Type</th>
+            <th class="align-middle">Starts at</th>
+            <th class="align-middle">Ends at</th>
+            <th class="align-middle">Spots Left</th>
+            <th class="align-middle">Join</th>
+            
+            
+        </tr>
+    </thead>
+    {% for row in x %}
+    <div style="background-color:lightblue">
+        <tr>
+        {% for d in row %}
+            <td>{{ d }}</td>
+        {% endfor %}
+        </tr>
+    </div>
+    {% endfor %}
+</table>-->
+<br>
+<br>
+<br>
+<br>
+<br>
+<table align="center" border="1" cellpadding="5" cellspacing="5">
+    <thead>
+        <tr>
+            <!--<th style="border-left: 1px solid #eee;" class="align-middle">Col1</th>-->
+            <th class="align-middle">Event ID</th>
+            <th class="align-middle">Event Name</th>
+            <th class="align-middle">Venue Name</th>
+            <th class="align-middle">Zip Code</th>
+            <th class="align-middle">City</th>
+            <th class="align-middle">Event Type</th>
+            <th class="align-middle">Starts at</th>
+            <th class="align-middle">Ends at</th>
+            <th class="align-middle">Spots Left</th>
+            <th class="align-middle">Action</th>
+            
+            
+        </tr>
+    </thead>
+    {% for row in x %}
+    <div style="background-color:lightblue">
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+            <td>{{ row[3] }}</td>
+            <td>{{ row[4] }}</td>
+            <td>{{ row[5] }}</td>
+            <td>{{ row[6] }}</td>
+            <td>{{ row[7] }}</td>
+            <td>{{ row[8] }}</td>
+            <td><form action='/joinevent' method="POST">
+                <button name = "eventid" type ="submit" align = "right" value={{ row[0] }} onclick="window.location.href='/joinevent'">Join Event</button>
+                </form>
+            </td>
+        </tr>
+    </div>
+    {% endfor %}
+</table>
+<br>
+<br>
+<br>
+<br>
+	<h1>Events You have registered in</h1>
+    <table align="center" border="1" cellpadding="5" cellspacing="5">
+    <thead>
+        <tr>
+            <!--<th style="border-left: 1px solid #eee;" class="align-middle">Col1</th>-->
+            <th class="align-middle">User Name</th>
+            <th class="align-middle">Event ID</th>
+            <th class="align-middle">Event Name</th>
+            <th class="align-middle">Venue Name</th>
+            <th class="align-middle">Zip Code</th>
+            <th class="align-middle">Event City</th>
+            <th class="align-middle">Event Type</th>
+            <th class="align-middle">Event Start</th>
+            <th class="align-middle">Event End</th>
+            <th class="align-middle">Action</th>                    
+            
+        </tr>
+    </thead><!--
+    {% for row in y %}
+        <tr>
+        {% for d in row %}
+            <td>{{ d }}</td>
+        {% endfor %}
+        </tr>
+    {% endfor %}-->
+    {% for row in y %}
+    <tr>
+        <td>{{ row[0] }}</td>
+        <td>{{ row[1] }}</td>
+        <td>{{ row[2] }}</td>
+        <td>{{ row[3] }}</td>
+        <td>{{ row[4] }}</td>
+        <td>{{ row[5] }}</td>
+        <td>{{ row[6] }}</td>
+        <td>{{ row[7] }}</td>
+        <td>{{ row[8] }}</td>
+        
+
+    
+    <td><form action='/quitevent' method="POST">
+                <button name = "eventid" type ="submit" align = "right" value={{ row[1] }} onclick="window.location.href='/quitevent'">Quit Event</button>
+                </form>
+    </td>
+    </tr>
+    {% endfor %}
+</table>
+<br>
+<br>
+<br>
+<br>
+<button align = "right" onclick="window.location.href='/joinevent'">Create Event</button>
+<button align = "right" onclick="window.location.href='/joinevent'">Join Event</button>
+
+</body>
+
+
+</html>
+{% endblock content %}

@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dropdown</title>
+</head>
+<body>
+<select name= colours method="GET" action="/">
+    {% for colour in colours %}
+    <option value= "{{colour}}" SELECTED>{{colour}}</option>"
+    {% endfor %}
+</select>
+
+</select>
+<br>
+<br>
+<br>
+<button align = "right" onclick="window.location.href='/processjoin'">Submit</button>
+</body>
+</html>
+{% endblock content %}
