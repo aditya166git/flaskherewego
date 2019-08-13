@@ -1,6 +1,6 @@
 @echo off
 
-set "VIRTUAL_ENV=C:\APAD\APADPR~1\FLASK_~1\env"
+set "VIRTUAL_ENV=C:\APAD\APADPR~1\GITFOR~1\FLASKH~1\env"
 
 if defined _OLD_VIRTUAL_PROMPT (
     set "PROMPT=%_OLD_VIRTUAL_PROMPT%"
