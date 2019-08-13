@@ -1,5 +1,5 @@
 from flask import Flask, render_template, url_for, flash, redirect, request
-from forms import RegistrationForm, LoginForm, VenueForm
+from forms import RegistrationForm, LoginForm, VenueForm,StartEventForm,DeleteEventForm,DeleteVenueForm,DeleteUserForm,SearchEventForm
 app = Flask(__name__)
 import os
 import pymysql
@@ -15,16 +15,25 @@ global username
 
 app.config['SECRET_KEY'] ='381892'
 
+class Database:
+	def __init__(self):		
+		host = "127.0.0.1"
+		user = "root"
+		password = ""
+		db = "herewegomysql"
+		self.con = pymysql.connect(host=host, user=user, password=password, db=db, cursorclass=pymysql.cursors.DictCursor)
+		self.cur = self.con.cursor()
+
 posts =[
 	{
 		'author':'Aditya',
-		'title':'How far can I go?',
-		'content':'Ficton'
+		'title':'Soccer at Rainey?',
+		'content':'Sports'
 	},
 	{
 		'author':'Shivang',
-		'title':'How to fall in love with Wendys',
-		'content':'Thriller'
+		'title':'Board Games this weekend',
+		'content':'Fun Activity'
 	}
 ]
 
@@ -45,8 +54,8 @@ def db_con():
 		# so that your application can use 127.0.0.1:3306 to connect to your
 		# Cloud SQL instance
 		host = '127.0.0.1'
-		cnx = pymysql.connect(user='root', password='',
-							  host=host, db='herewegomysql')
+		cnx = pymysql.connect(user='root', password='herewego',
+							  host=host, db='herewegoDB')
 		return cnx
 '''end with db connection'''
 
@@ -57,8 +66,12 @@ def get_user_role(username):
 		role=""
 		cursor.execute("select user_role from users where username=%s",username)
 		res = cursor.fetchone()
-		#print("***********admin**********")
-		#print(res[0])
+		if res:
+			return res[0]
+		else:
+			flash("User does not exist. Please check you entered the correct login credentials")
+			return 'user'
+
 	return res[0]
 
 #Helper function to check if user exists
@@ -69,6 +82,7 @@ def auth_user(username,password):
 		if rows_count>0:
 			return 'Y'
 		else:
+			print("invalid user")
 			return 'X'
 
 #check event capacity
@@ -97,8 +111,6 @@ def add_user(username,first_name,last_name,age,email,user_role,user_phone,passwo
 def add_venue(user_account,venue_name,venue_open,venue_close,zip_code,city,address):
 	conn = db_con()
 	with conn.cursor() as cursor:		
-		#user_role = get_user_role(user_account)
-		print("inside the code")
 		try:
 			cursor.execute('''
 			insert into venues(venue_name,venue_open,venue_close,zip_code,city,address)
@@ -112,6 +124,216 @@ def add_venue(user_account,venue_name,venue_open,venue_close,zip_code,city,addre
 		except pymysql.InternalError as e:
 			 print("Error {" + str(e.args[0]) + "}")
 	
+
+def get_venue_id(venue_name):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+				SELECT venue_id 
+				FROM venues
+				WHERE venue_name = %s
+				''',(venue_name,))
+			result = cursor.fetchone()
+			if result is None:
+				return "Venue not found"
+			else:
+				return int(result[0])
+		except pymysql.InternalError as e:
+			print("Error {" + str(e.args[0]) + "}")
+
+
+#Checks if a particular venue is available with a given venue id, start time and Date of event
+def venue_available(venue_id,start_time,event_date):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+							SELECT venue_id
+							FROM events
+							WHERE venue_id = %s AND event_start = %s AND event_date = %s
+			''',(venue_id,start_time,event_date))
+			
+			result = cursor.fetchone()
+			if result is None:
+				return True
+			else:
+				return False
+		except pymysql.InternalError as e:
+				print("Error {" + str(e.args[0]) + "}")
+
+
+#Start an event
+
+def start_event(name,city,event_type,start_time,capacity,venue_id,username,description,event_date):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			end_time = start_time + datetime.timedelta(hours=1)
+			creation_date = datetime.datetime.now().strftime("%Y-%m-%d")
+			if venue_available(venue_id,start_time,event_date):
+				cursor.execute('''
+					INSERT INTO events(event_name,event_city,event_type,event_start,event_end,event_capacity,venue_id,creation_date,username,event_description,event_date)
+					VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)                         
+					''',(name,city,event_type,start_time,end_time,capacity,venue_id,creation_date,username,description,event_date))
+				conn.commit()
+				cursor.execute('''SELECT * FROM events WHERE event_name = %s''', (name,))
+				events = cursor.fetchall()
+				for event in events:
+					print(event)
+			else:
+				flash(f'Event created for this time is unavailable. Please pick a different time', 'success')
+				return redirect(url_for('startevent'))
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+
+#search for existence of a user
+def check_events(eventname,startevent):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+							SELECT event_id from events WHERE event_name = %s AND event_start = %s
+				''',(eventname,startevent))
+			user_results = cursor.fetchone()
+			print("*****Event Id id*****")
+					
+			if user_results:
+				id = user_results[0]
+				return id
+			else:
+				return 0
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+#Delete a user from a registered event
+def delete_event(eventname,starttime):
+	conn = db_con()
+	with conn.cursor() as cursor:	
+		#msg = "User removed from the event succesfully"
+		e_id = check_events(eventname,starttime)
+		print(starttime)
+		try:	
+			#if check_events(eventname,starttime):
+			if e_id!=0:
+				cursor.execute("delete from user_events where event_id=%s",e_id)
+				cursor.execute("delete from events where event_id=%s",e_id)
+
+				conn.commit()
+				conn.close()
+				flash("Event " + eventname + " has been successfully deleted from this event")
+			else:
+				flash("Event does not exist. Please check you entered the correct event name and time") 
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+
+
+def check_venue(venuename):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+							SELECT venue_id from venues WHERE venue_name = %s
+				''',(venuename,))
+			user_results = cursor.fetchone()
+			if user_results:
+				return True
+			else:
+				return False
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+#Delete a user from a registered event
+def delete_venue(venuename):
+	conn = db_con()
+	with conn.cursor() as cursor:	
+		success_msg = "Venue " + str(venuename) + " has been successfully deleted!"
+		failure_msg = "Venue " + str(venuename) + " does not exist, please check venue name is entered correctly and try again!"
+		try:	
+			if check_venue(venuename):    	
+				cursor.execute('''DELETE from venues WHERE venue_name =%s
+							   ''',(venuename,))
+
+				conn.commit()
+				conn.close()
+				flash(success_msg,'success')
+			else:
+				flash(failure_msg,'error') 
+		except pymysql.InternalError as e:
+			flash(failure_msg,'error')
+			return render_template('about.html', title='About')
+
+def check_user(username):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+							SELECT username from users WHERE username = %s
+				''',(username,))
+			user_results = cursor.fetchone()
+			if user_results:
+				return True
+			else:
+				return False
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+#Delete a user from a registered event
+def delete_user(username):
+	conn = db_con()
+	with conn.cursor() as cursor:	
+		success_msg = "User " + str(username) + " has been successfully deleted!"
+		failure_msg = "User " + str(username) + " does not exist, please check user name is entered correctly and try again!"
+		try:	
+			if check_user(username):    	
+				cursor.execute('''DELETE from users WHERE username =%s
+							   ''',(username,))
+
+				conn.commit()
+				conn.close()
+				flash(success_msg,'success')
+			else:
+				flash(failure_msg,'error') 
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+
+def events_exist(eventname,event_date):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+							SELECT * from events WHERE event_name = %s AND event_date = %s
+				''',(eventname,event_date))
+			user_results = cursor.fetchall()
+			if user_results:
+				return True
+			else:
+				return False
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+
+def delete_user(username):
+	conn = db_con()
+	with conn.cursor() as cursor:	
+		success_msg = "User " + str(username) + " has been successfully deleted!"
+		failure_msg = "User " + str(username) + " does not exist, please check user name is entered correctly and try again!"
+		try:	
+			if check_user(username):    	
+				cursor.execute('''DELETE from users WHERE username =%s
+							   ''',(username,))
+
+				conn.commit()
+				conn.close()
+				flash(success_msg,'success')
+			else:
+				flash(failure_msg,'error') 
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
 
 @app.route('/')
 @app.route('/home')
@@ -131,6 +353,34 @@ def about():
 	#return render_template('about.html')
 	return render_template('about.html', title='About')
 
+@app.route('/findevents')
+def findevents():
+	return render_template('eventsearch.html')
+
+
+@app.route('/searchevents',methods=['GET', 'POST'])
+def searchevents():
+	form = SearchEventForm()
+	eventname = form.event_name.data
+	event_date = form.event_date.data
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			if  form.validate_on_submit():
+				if events_exist(eventname,event_date):					
+					cursor.execute('''
+									SELECT e.event_name,e.event_city,e.event_type,TIME(e.event_start),TIME(e.event_end),v.venue_name,v.address FROM events e, venues v WHERE event_name = %s AND event_date = %s AND e.venue_id = v.venue_id
+						''',(eventname,event_date))
+					results = cursor.fetchall()
+					events = [list(x) for x in results]
+					return render_template('eventsearch.html',len = len(events),events=events)
+				else:
+					flash(f'No events found for this date!')
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+	return render_template('searchevents.html',title='Search events',form=form)
+
+
 
 @app.route('/userpage')
 def userpage():
@@ -140,7 +390,7 @@ def userpage():
 		print("*******")
 		user = username
 		print(user)
-		cursor.execute("SELECT e.event_id,e.event_name,v.venue_name,v.zip_code,e.event_city,e.event_type,e.event_start,e.event_end,e.event_capacity from events e,venues v where e.venue_id = v.venue_id and e.event_start >= CURDATE() and not exists ( select ue.event_id from user_events ue where username = %s and ue.event_id = e.event_id)",user)
+		cursor.execute("SELECT e.event_id,e.event_name,v.venue_name,v.zip_code,e.event_city,e.event_type,e.event_start,e.event_end,e.event_capacity from events e,venues v where e.venue_id = v.venue_id and e.event_date >= CURDATE() and not exists ( select ue.event_id from user_events ue where username = %s and ue.event_id = e.event_id)",user)
 		data = cursor.fetchall()
 		b = [list(x) for x in data]
 		#cursor.execute("SELECT * from user_events where username = %s",user)
@@ -218,6 +468,48 @@ def register():
 		return redirect(url_for('about'))
 	return render_template('register.html', title='Register', form=form)
 
+@app.route('/startevent',methods=['GET','POST'])
+def startevent():
+	form = StartEventForm()
+	venue_name = form.venue_name.data
+	venue_id = get_venue_id(venue_name)
+	#start_events = convert_hours(form.event_start.data)
+	time = form.event_start.data
+	print("Inside Start Event")
+
+	if form.validate_on_submit():
+		start_event(form.event_name.data,form.event_city.data,form.event_type.data,time,form.event_capacity.data,venue_id,form.username.data,form.event_description.data,form.event_date.data)
+		flash(f'You have successfully created this event', 'success')
+		return redirect(url_for('about'))
+	print(form.errors)
+	return render_template('start_event.html', title='Start Event', form=form)
+
+@app.route('/deletevent',methods=['GET','POST'])
+def deletevent():
+	form = DeleteEventForm()
+	start_time = form.event_start.data
+	if form.validate_on_submit():
+		delete_event(form.event_name.data,start_time)
+		return redirect(url_for('hello'))
+	print(form.errors)
+	return render_template('deleteevent.html', title='Delete Event', form=form)
+
+@app.route('/deletevenue',methods=['GET','POST'])
+def deletevenue():
+	form = DeleteVenueForm()
+	if form.validate_on_submit():
+		delete_venue(form.venue_name.data)
+		return redirect(url_for('hello'))
+	return render_template('deletevenue.html', title='Delete Venue', form=form)
+
+@app.route('/deleteuser',methods=['GET','POST'])
+def deleteuser():
+	form = DeleteUserForm()
+	if form.validate_on_submit():
+		delete_user(form.username.data)
+		return redirect(url_for('hello'))
+	return render_template('deleteuser.html', title='Delete User', form=form)
+
 
 @app.route('/addvenue',methods=['GET','POST'])
 def addvenue():
@@ -227,6 +519,7 @@ def addvenue():
 		flash(f'Venue has been successfully added', 'success')
 		return redirect(url_for('about'))
 	return render_template('addvenue.html', title='Add Venue', form=form)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

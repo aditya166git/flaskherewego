@@ -1,0 +1,43 @@
+{% extends "user_layout.html" %}
+{% block content %}
+<html>
+<body>
+    <h1>Find Events</h1>
+<br>
+<br>
+<br>
+<br>
+<br>
+<table align="center" border="1" cellpadding="5" cellspacing="5">
+    <thead>
+        <tr>
+            <!--<th style="border-left: 1px solid #eee;" class="align-middle">Col1</th>-->
+            <th class="align-middle">Event Name</th>
+            <th class="align-middle">City</th>
+            <th class="align-middle">Event type</th>
+            <th class="align-middle">Starts at</th>
+            <th class="align-middle">Ends at</th>
+            <th class="align-middle">Venue name</th>
+            <th class="align-middle">Venue address</th>
+            
+        </tr>
+    </thead>
+    {% for event in events %}
+    <div style="background-color:lightblue">
+        <tr>
+            <td>{{ event[0] }}</td>
+            <td>{{ event[1] }}</td>
+            <td>{{ event[2] }}</td>
+            <td>{{ event[3] }}</td>
+            <td>{{ event[4] }}</td>
+            <td>{{ event[5] }}</td>
+            <td>{{ event[6] }}</td>
+        </tr>
+    </div>
+    {% endfor %}
+</table>
+</body>
+</html>
+{% endblock content %}
+
+
