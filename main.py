@@ -19,21 +19,21 @@ class Database:
 	def __init__(self):		
 		host = "127.0.0.1"
 		user = "root"
-		password = "root"
-		db = "herewego"
+		password = ""
+		db = "herewegomysql"
 		self.con = pymysql.connect(host=host, user=user, password=password, db=db, cursorclass=pymysql.cursors.DictCursor)
 		self.cur = self.con.cursor()
 
 posts =[
 	{
 		'author':'Aditya',
-		'title':'How far can I go?',
-		'content':'Ficton'
+		'title':'Soccer at Rainey?',
+		'content':'Sports'
 	},
 	{
 		'author':'Shivang',
-		'title':'How to fall in love with Wendys',
-		'content':'Thriller'
+		'title':'Board Games this weekend',
+		'content':'Fun Activity'
 	}
 ]
 
@@ -66,6 +66,12 @@ def get_user_role(username):
 		role=""
 		cursor.execute("select user_role from users where username=%s",username)
 		res = cursor.fetchone()
+		if res:
+			return res[0]
+		else:
+			flash("User does not exist. Please check you entered the correct login credentials")
+			return 'user'
+
 	return res[0]
 
 #Helper function to check if user exists
@@ -76,6 +82,7 @@ def auth_user(username,password):
 		if rows_count>0:
 			return 'Y'
 		else:
+			print("invalid user")
 			return 'X'
 
 #check event capacity
@@ -157,6 +164,7 @@ def venue_available(venue_id,start_time,event_date):
 
 
 #Start an event
+
 def start_event(name,city,event_type,start_time,capacity,venue_id,username,description,event_date):
 	conn = db_con()
 	with conn.cursor() as cursor:
@@ -189,10 +197,13 @@ def check_events(eventname,startevent):
 							SELECT event_id from events WHERE event_name = %s AND event_start = %s
 				''',(eventname,startevent))
 			user_results = cursor.fetchone()
+			print("*****Event Id id*****")
+					
 			if user_results:
-				return True
+				id = user_results[0]
+				return id
 			else:
-				return False
+				return 0
 		except pymysql.InternalError as e:
 			print("Error {"+ str(e.args[0]) +"}")
 
@@ -200,15 +211,18 @@ def check_events(eventname,startevent):
 def delete_event(eventname,starttime):
 	conn = db_con()
 	with conn.cursor() as cursor:	
-		msg = "User removed from the event succesfully"
+		#msg = "User removed from the event succesfully"
+		e_id = check_events(eventname,starttime)
 		print(starttime)
 		try:	
-			if check_events(eventname,starttime):    	
-				cursor.execute('''DELETE from events WHERE event_name =%s AND event_start = %s
-							   ''',(eventname,starttime))
+			#if check_events(eventname,starttime):
+			if e_id!=0:
+				cursor.execute("delete from user_events where event_id=%s",e_id)
+				cursor.execute("delete from events where event_id=%s",e_id)
 
 				conn.commit()
-				flash("Event " + eventname + " has been successfullyn deleted from this event")
+				conn.close()
+				flash("Event " + eventname + " has been successfully deleted from this event")
 			else:
 				flash("Event does not exist. Please check you entered the correct event name and time") 
 		except pymysql.InternalError as e:
@@ -248,7 +262,8 @@ def delete_venue(venuename):
 			else:
 				flash(failure_msg,'error') 
 		except pymysql.InternalError as e:
-			print("Error {"+ str(e.args[0]) +"}")
+			flash(failure_msg,'error')
+			return render_template('about.html', title='About')
 
 def check_user(username):
 	conn = db_con()
@@ -312,7 +327,7 @@ def userpage():
 		print("*******")
 		user = username
 		print(user)
-		cursor.execute("SELECT e.event_id,e.event_name,v.venue_name,v.zip_code,e.event_city,e.event_type,e.event_start,e.event_end,e.event_capacity from events e,venues v where e.venue_id = v.venue_id and e.event_start >= CURDATE() and not exists ( select ue.event_id from user_events ue where username = %s and ue.event_id = e.event_id)",user)
+		cursor.execute("SELECT e.event_id,e.event_name,v.venue_name,v.zip_code,e.event_city,e.event_type,e.event_start,e.event_end,e.event_capacity from events e,venues v where e.venue_id = v.venue_id and e.event_date >= CURDATE() and not exists ( select ue.event_id from user_events ue where username = %s and ue.event_id = e.event_id)",user)
 		data = cursor.fetchall()
 		b = [list(x) for x in data]
 		#cursor.execute("SELECT * from user_events where username = %s",user)
@@ -397,6 +412,7 @@ def startevent():
 	venue_id = get_venue_id(venue_name)
 	#start_events = convert_hours(form.event_start.data)
 	time = form.event_start.data
+	print("Inside Start Event")
 
 	if form.validate_on_submit():
 		start_event(form.event_name.data,form.event_city.data,form.event_type.data,time,form.event_capacity.data,venue_id,form.username.data,form.event_description.data,form.event_date.data)
@@ -440,6 +456,7 @@ def addvenue():
 		flash(f'Venue has been successfully added', 'success')
 		return redirect(url_for('about'))
 	return render_template('addvenue.html', title='Add Venue', form=form)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
