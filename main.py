@@ -1,5 +1,5 @@
 from flask import Flask, render_template, url_for, flash, redirect, request
-from forms import RegistrationForm, LoginForm, VenueForm
+from forms import RegistrationForm, LoginForm, VenueForm,StartEventForm,DeleteEventForm,DeleteVenueForm,DeleteUserForm
 app = Flask(__name__)
 import os
 import pymysql
@@ -57,8 +57,6 @@ def get_user_role(username):
 		role=""
 		cursor.execute("select user_role from users where username=%s",username)
 		res = cursor.fetchone()
-		#print("***********admin**********")
-		#print(res[0])
 	return res[0]
 
 #Helper function to check if user exists
@@ -97,8 +95,6 @@ def add_user(username,first_name,last_name,age,email,user_role,user_phone,passwo
 def add_venue(user_account,venue_name,venue_open,venue_close,zip_code,city,address):
 	conn = db_con()
 	with conn.cursor() as cursor:		
-		#user_role = get_user_role(user_account)
-		print("inside the code")
 		try:
 			cursor.execute('''
 			insert into venues(venue_name,venue_open,venue_close,zip_code,city,address)
@@ -112,6 +108,8 @@ def add_venue(user_account,venue_name,venue_open,venue_close,zip_code,city,addre
 		except pymysql.InternalError as e:
 			 print("Error {" + str(e.args[0]) + "}")
 	
+
+
 
 @app.route('/')
 @app.route('/home')
