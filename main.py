@@ -1,5 +1,5 @@
 from flask import Flask, render_template, url_for, flash, redirect, request
-from forms import RegistrationForm, LoginForm, VenueForm,StartEventForm,DeleteEventForm,DeleteVenueForm,DeleteUserForm
+from forms import RegistrationForm, LoginForm, VenueForm,StartEventForm,DeleteEventForm,DeleteVenueForm,DeleteUserForm,SearchEventForm
 app = Flask(__name__)
 import os
 import pymysql
@@ -54,8 +54,8 @@ def db_con():
 		# so that your application can use 127.0.0.1:3306 to connect to your
 		# Cloud SQL instance
 		host = '127.0.0.1'
-		cnx = pymysql.connect(user='root', password='',
-							  host=host, db='herewegomysql')
+		cnx = pymysql.connect(user='root', password='herewego',
+							  host=host, db='herewegoDB')
 		return cnx
 '''end with db connection'''
 
@@ -285,6 +285,41 @@ def delete_user(username):
 			print("Error {"+ str(e.args[0]) +"}")
 
 
+def events_exist(eventname,event_date):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+							SELECT * from events WHERE event_name = %s AND event_date = %s
+				''',(eventname,event_date))
+			user_results = cursor.fetchall()
+			if user_results:
+				return True
+			else:
+				return False
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+
+def delete_user(username):
+	conn = db_con()
+	with conn.cursor() as cursor:	
+		success_msg = "User " + str(username) + " has been successfully deleted!"
+		failure_msg = "User " + str(username) + " does not exist, please check user name is entered correctly and try again!"
+		try:	
+			if check_user(username):    	
+				cursor.execute('''DELETE from users WHERE username =%s
+							   ''',(username,))
+
+				conn.commit()
+				conn.close()
+				flash(success_msg,'success')
+			else:
+				flash(failure_msg,'error') 
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
+
 @app.route('/')
 @app.route('/home')
 def hello():
@@ -302,6 +337,34 @@ def about():
 	#return f'Hello, {escape(name)}!'
 	#return render_template('about.html')
 	return render_template('about.html', title='About')
+
+@app.route('/findevents')
+def findevents():
+	return render_template('eventsearch.html')
+
+
+@app.route('/searchevents',methods=['GET', 'POST'])
+def searchevents():
+	form = SearchEventForm()
+	eventname = form.event_name.data
+	event_date = form.event_date.data
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			if  form.validate_on_submit():
+				if events_exist(eventname,event_date):					
+					cursor.execute('''
+									SELECT e.event_name,e.event_city,e.event_type,TIME(e.event_start),TIME(e.event_end),v.venue_name,v.address FROM events e, venues v WHERE event_name = %s AND event_date = %s AND e.venue_id = v.venue_id
+						''',(eventname,event_date))
+					results = cursor.fetchall()
+					events = [list(x) for x in results]
+					return render_template('eventsearch.html',len = len(events),events=events)
+				else:
+					flash(f'No events found for this date!')
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+	return render_template('searchevents.html',title='Search events',form=form)
+
 
 
 @app.route('/userpage')

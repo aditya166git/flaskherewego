@@ -67,3 +67,9 @@ class DeleteVenueForm(FlaskForm):
 class DeleteUserForm(FlaskForm):
 	username = StringField('User Name', validators=[DataRequired(), Length(min=2, max=50)])
 	submit = SubmitField('Delete User')
+
+class SearchEventForm(FlaskForm):
+	event_name = StringField('Event Name', validators=[DataRequired(), Length(min=2, max=50)])
+	event_date = DateTimeField('Event Date',format = "%m/%d/%Y",validators=[DataRequired()],
+		default= datetime.datetime.now(tz))	
+	submit = SubmitField('Search Event')
