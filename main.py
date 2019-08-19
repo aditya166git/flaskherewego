@@ -1,10 +1,14 @@
-from flask import Flask, render_template, url_for, flash, redirect, request
+from flask import Flask, render_template, url_for, flash, redirect, request,jsonify
+from flask.json import JSONEncoder
 from forms import RegistrationForm, LoginForm, VenueForm,StartEventForm,DeleteEventForm,DeleteVenueForm,DeleteUserForm,SearchEventForm
 app = Flask(__name__)
 import os
 import pymysql
 import datetime 
+import json
 from datetime import time
+from datetime import datetime
+from datetime import timedelta
 
 db_user = os.environ.get('CLOUD_SQL_USERNAME')
 db_password = os.environ.get('CLOUD_SQL_PASSWORD')
@@ -24,6 +28,23 @@ class Database:
 		self.con = pymysql.connect(host=host, user=user, password=password, db=db, cursorclass=pymysql.cursors.DictCursor)
 		self.cur = self.con.cursor()
 
+class CustomJSONEncoder(JSONEncoder):
+
+    def default(self, obj):
+        try:
+            if isinstance(obj, (datetime,datetime.date,datetime.datetime.time,datetime.timedelta)):
+                return obj.isoformat()
+            iterable = iter(obj)
+        except TypeError:
+            pass
+        else:
+            return list(iterable)
+        return JSONEncoder.default(self, obj)
+
+app.json_encoder = CustomJSONEncoder
+
+
+
 posts =[
 	{
 		'author':'Aditya',
@@ -36,6 +57,7 @@ posts =[
 		'content':'Fun Activity'
 	}
 ]
+
 
 '''start with db connection'''
 def db_con():
@@ -101,8 +123,14 @@ def add_user(username,first_name,last_name,age,email,user_role,user_phone,passwo
 				creation_date = datetime.datetime.now().strftime("%Y-%m-%d")
 				sql = "INSERT INTO users (username,first_name,last_name,age,email,user_role,user_phone,creation_date,password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
 				val = username, first_name,last_name,age,email,user_role,user_phone,creation_date,password
-				cursor.execute(sql, val)
+				cursor.execute(sql, val) 
 				conn.commit()
+				cursor.execute("SELECT username FROM users WHERE username=%s",username)
+				value = cursor.fetchone()
+				if value:
+					return True
+				else:
+					return False
 				#conn.close()						
 	except TypeError as e:
 		print(e)
@@ -315,6 +343,21 @@ def events_exist(eventname,event_date):
 		except pymysql.InternalError as e:
 			print("Error {"+ str(e.args[0]) +"}")
 
+def event_exist(eventname):
+	conn = db_con()
+	with conn.cursor() as cursor:
+		try:
+			cursor.execute('''
+							SELECT * from events WHERE event_name = %s
+				''',(eventname,))
+			user_results = cursor.fetchall()
+			if user_results:
+				return True
+			else:
+				return False
+		except pymysql.InternalError as e:
+			print("Error {"+ str(e.args[0]) +"}")
+
 
 def delete_user(username):
 	conn = db_con()
@@ -358,6 +401,39 @@ def findevents():
 	return render_template('eventsearch.html')
 
 
+@app.route('/apisearchevent',methods=['POST'])
+def apisearchevent():
+	data = request.get_json()
+	print(data)
+	eventname = data['event_name']
+	conn = db_con()
+	with conn.cursor() as cursor:
+		if event_exist(eventname):
+			cursor.execute("SELECT e.event_name,e.event_city,e.event_type,e.event_start,e.event_end,v.venue_name,v.address FROM events e, venues v WHERE event_name = %s AND e.venue_id = v.venue_id "
+							,eventname)
+
+			results = cursor.fetchall()
+			time = results[0][3]
+			start_time = time.strftime('%H:%M')
+			end_time= results[0][4].strftime('%H:%M')
+			if results:
+				return jsonify(
+					eventname=results[0][0],
+					eventtype=results[0][1],
+					eventcity=results[0][2],
+					eventstart=start_time,
+					eventend=end_time,
+					venuename=results[0][5],
+					venueaddress=results[0][6],
+					event_found="True"
+					)
+		else:
+			return jsonify(
+				event_found="False"
+				)
+
+
+
 @app.route('/searchevents',methods=['GET', 'POST'])
 def searchevents():
 	form = SearchEventForm()
@@ -365,19 +441,16 @@ def searchevents():
 	event_date = form.event_date.data
 	conn = db_con()
 	with conn.cursor() as cursor:
-		try:
-			if  form.validate_on_submit():
-				if events_exist(eventname,event_date):					
-					cursor.execute('''
-									SELECT e.event_name,e.event_city,e.event_type,TIME(e.event_start),TIME(e.event_end),v.venue_name,v.address FROM events e, venues v WHERE event_name = %s AND event_date = %s AND e.venue_id = v.venue_id
-						''',(eventname,event_date))
-					results = cursor.fetchall()
-					events = [list(x) for x in results]
-					return render_template('eventsearch.html',len = len(events),events=events)
-				else:
-					flash(f'No events found for this date!')
-		except pymysql.InternalError as e:
-			print("Error {"+ str(e.args[0]) +"}")
+		if  form.validate_on_submit():
+			if events_exist(eventname,event_date):					
+				cursor.execute('''
+								SELECT e.event_name,e.event_city,e.event_type,TIME(e.event_start),TIME(e.event_end),v.venue_name,v.address FROM events e, venues v WHERE event_name = %s AND event_date = %s AND e.venue_id = v.venue_id
+					''',(eventname,event_date))
+				results = cursor.fetchall()
+				events = [list(x) for x in results]
+				return render_template('eventsearch.html',len = len(events),events=events)
+			else:
+				flash(f'No events found for this date!')
 	return render_template('searchevents.html',title='Search events',form=form)
 
 
@@ -459,6 +532,33 @@ def quit_event():
 def process_join():
 	return username
 
+@app.route('/apiregister',methods=['POST'])
+def apiregister():
+	data = request.get_json()
+	username = data['username']
+	firstname = data['firstname']
+	lastname = data['lastname']
+	age = data['age']
+	email = data['email']
+	password = data['password']
+	user_phone = data['user_phone']
+	if add_user(username,firstname,lastname,age,email,"user",user_phone,"CHANGEME"):
+		return jsonify(
+			username=username,
+			first_name = firstname,
+			last_name = lastname,
+			age=age,
+			email=email,
+			user_phone=user_phone,
+			register_status = "success"
+			)
+	else:
+		return jsonify(
+			register_success = "failure",
+			)
+
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
 	form = RegistrationForm()
@@ -521,15 +621,36 @@ def addvenue():
 	return render_template('addvenue.html', title='Add Venue', form=form)
 
 
+@app.route('/apilogin/<username>/<password>',methods=['GET'])
+def apilogin(username,password):
+	if auth_user(username,password) == 'Y':
+		return jsonify(
+			user_authenticated = "Success",
+			username=username  
+			)
+	else:
+		return jsonify(
+			user_authenticated = "Failure"
+			)
+
+
+
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
 	form = LoginForm()
+	global username
+	
+	if request.method == 'POST':
+		username = request.form['username']
+		user_role = get_user_role(username)
+		password = request.form['password']
+		auth_user(username,password)
+
 	if form.validate_on_submit():
 		#conn = db_con()
-		global username
-		username = form.username.data
-		user_role =get_user_role(form.username.data)	
-		is_valid = auth_user(form.username.data,form.password.data)
+		is_valid = auth_user(username,password)		
 		if is_valid=='Y':
 			if user_role == 'admin':
 				return redirect(url_for('admin'))
