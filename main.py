@@ -7,7 +7,6 @@ import pymysql
 import datetime 
 import json
 from datetime import time
-from datetime import datetime
 from datetime import timedelta
 
 db_user = os.environ.get('CLOUD_SQL_USERNAME')
@@ -28,20 +27,20 @@ class Database:
         self.con = pymysql.connect(host=host, user=user, password=password, db=db, cursorclass=pymysql.cursors.DictCursor)
         self.cur = self.con.cursor()
 
-class CustomJSONEncoder(JSONEncoder):
+# class CustomJSONEncoder(JSONEncoder):
 
-    def default(self, obj):
-        try:
-            if isinstance(obj, (datetime,datetime.date,datetime.datetime.time,datetime.timedelta)):
-                return obj.isoformat()
-            iterable = iter(obj)
-        except TypeError:
-            pass
-        else:
-            return list(iterable)
-        return JSONEncoder.default(self, obj)
+#     def default(self, obj):
+#         try:
+#             if isinstance(obj, (datetime,datetime.date,datetime.datetime.time,datetime.timedelta)):
+#                 return obj.isoformat()
+#             iterable = iter(obj)
+#         except TypeError:
+#             pass
+#         else:
+#             return list(iterable)
+#         return JSONEncoder.default(self, obj)
 
-app.json_encoder = CustomJSONEncoder
+# app.json_encoder = CustomJSONEncoder
 
 
 
@@ -120,22 +119,28 @@ def check_capacity(event_id):
 
 @app.route('/apijoinevent/<event_id>/<username>',methods=['GET'])
 def apijoinevent(event_id,username):
-    event_cap = check_capacity(event_id)
-    if event_cap>0:
-        conn = db_con()
-        with conn.cursor() as cursor:
-            sql = "INSERT INTO user_events(username,event_id) VALUES (%s, %s)"
-            val = username,event_id
-            cursor.execute(sql, val)
-            cursor.execute("update events set event_capacity = event_capacity-1 where event_id=%s",event_id)
-            conn.commit()
+    try:
+        event_cap = check_capacity(event_id)
+        if event_cap>0:
+            conn = db_con()
+            with conn.cursor() as cursor:
+                sql = "INSERT INTO user_events(username,event_id) VALUES (%s, %s)"
+                val = username,event_id
+                cursor.execute(sql, val)
+                cursor.execute("update events set event_capacity = event_capacity-1 where event_id=%s",event_id)
+                conn.commit()
+                return jsonify(
+                event_join="True"
+                )
+        else:
             return jsonify(
-            event_join="True"
-            )
-    else:
+                event_join="capacity"
+                )
+    except:
         return jsonify(
-            event_join="False"
-            )
+                event_join="False"
+                )
+
 
 
 
@@ -647,14 +652,19 @@ def addvenue():
 
 @app.route('/apilogin/<username>/<password>',methods=['GET'])
 def apilogin(username,password):
-    if auth_user(username,password) == 'Y':
+    try:
+        if auth_user(username,password) == 'Y':
+            return jsonify(
+                user_authenticated = "Success",
+                username=username  
+                )
+        else:
+            return jsonify(
+                user_authenticated = "Failure"
+                )
+    except pymysql.InternalError:
         return jsonify(
-            user_authenticated = "Success",
-            username=username  
-            )
-    else:
-        return jsonify(
-            user_authenticated = "Failure"
+                user_authenticated="Exists"
             )
 
 
@@ -690,25 +700,26 @@ def apishowevents():
         try:
             events = []
             cursor.execute('''
-                SELECT event_name,event_city,event_type,TIME(event_start),TIME(event_end),event_capacity,venue_id,event_description,DATE(event_date),event_id
-                FROM events WHERE event_date <= CURDATE()
+                SELECT event_name,event_city,event_type,event_start,event_end,event_capacity,venue_name,event_description,event_date,event_id
+                FROM events,venues WHERE event_date <= CURDATE() AND events.venue_id = venues.venue_id
                 ''')
             results = cursor.fetchall()
+            print(len(results))
             if results:
                 for i in range(len(results)):
-                    events +=   jsonify(event_name=results[i][0],
-                            event_city=results[i][1],
-                            event_type=results[i][2],
-                            event_start = results[i][3].strftime('%H:%M'),
-                            event_end=results[i][4].strftime('%H:%M'),
-                            event_capacity =results[i][5],
-                            venue_id=results[i][6],
-                            event_description=results[i][7],
-                            event_date=results[i][8],
-                            event_id=results[i][9],
-                            event_status="True" 
-                        )
-                return events
+                    events.append({'event_name':results[i][0],
+                            'event_city':results[i][1],
+                            'event_type':results[i][2],
+                            'event_start':results[i][3].strftime('%H:%M'),
+                            'event_end':results[i][4].strftime('%H:%M'),
+                            'event_capacity':results[i][5],
+                            'venue_name':results[i][6],
+                            'event_description':results[i][7],
+                            'event_date':results[i][8].strftime('%m/%d/%Y'),
+                            'event_id':results[i][9],
+                            'event_status':'True' 
+                        })
+                return jsonify(events)
             else:
                 return jsonify(event_status="False")
         except pymysql.InternalError as e:
