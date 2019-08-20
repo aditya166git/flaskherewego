@@ -659,6 +659,29 @@ def apilogin(username,password):
 
 
 
+@app.route('/userpagejson',methods=['GET', 'POST'])
+def userpagejson():
+    conn = db_con()
+    with conn.cursor() as cursor:
+        
+        data = request.get_json()
+        print('****Printing Data****')
+        if data:
+            print('has inputs')
+            user = data['user']
+        else:
+            user = 'ritika'
+        #cursor.execute("SELECT e.event_id,e.event_name,v.venue_name,v.zip_code,e.event_city,e.event_type,e.event_start,e.event_end,e.event_capacity from events e,venues v where e.venue_id = v.venue_id and e.event_date >= CURDATE() and not exists ( select ue.event_id from user_events ue where username = %s and ue.event_id = e.event_id)",user)
+        cursor.execute("select e.event_id,e.event_name,v.venue_name,e.event_start,e.event_end FRom events e, venues v, user_events ue where e.venue_id = v.venue_id and ue.event_id = e.event_id and e.event_date>=CURDATE() and ue.username=%s",user)
+        results = cursor.fetchall()
+        print(results)
+        items = []
+        for row in results:
+            #items.append({'event_id':row[0],'event_name':row[1],'venue_name':row[2]})
+            items.append({'event_id':row[0],'event_name':row[1],'venue_name':row[2],'event_start':row[3],'event_end':row[4]})
+
+        return jsonify(items)
+
 
 @app.route('/apishowevents',methods=['GET'])
 def apishowevents():
