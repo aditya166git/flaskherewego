@@ -450,8 +450,8 @@ def apisearchevent():
                     eventname=results[0][0],
                     eventtype=results[0][1],
                     eventcity=results[0][2],
-                    eventstart=start_time,
-                    eventend=end_time,
+                    eventstart=str([0][3]),
+                    eventend=str([0][4]),
                     venuename=results[0][5],
                     venueaddress=results[0][6],
                     event_found="True"
